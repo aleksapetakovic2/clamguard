@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Nothing ClamGuard writes at runtime belongs in the repo; it all lives under
+# ~/.config, ~/.local/share and ~/.cache. See docs/USER_GUIDE.md section 12.

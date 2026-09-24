@@ -1,0 +1,3 @@
+# Line endings stay LF everywhere: the launcher and installers are bash, and a
+# checkout made on Windows, or onto an NTFS drive, must not turn them into CRLF.
+* text=auto eol=lf

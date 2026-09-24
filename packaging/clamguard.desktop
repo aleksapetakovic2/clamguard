@@ -1,0 +1,23 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ClamGuard
+GenericName=Antivirus
+Comment=Scan for viruses and malware with ClamAV
+Keywords=antivirus;virus;malware;security;scan;clamav;
+Exec="@LAUNCHER@" %F
+Icon=clamguard
+Terminal=false
+Categories=System;Security;
+StartupNotify=true
+StartupWMClass=clamguard
+MimeType=inode/directory;application/octet-stream;
+Actions=QuickScan;Update;
+
+[Desktop Action QuickScan]
+Name=Quick scan
+Exec="@LAUNCHER@" --scan
+
+[Desktop Action Update]
+Name=Virus signature updates
+Exec="@LAUNCHER@" --page updates

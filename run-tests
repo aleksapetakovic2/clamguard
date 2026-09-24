@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#
+# Runs ClamGuard's test suite.
+#
+#   ./run-tests            everything
+#   ./run-tests -v         with each test name
+#   ./run-tests conf_file  just tests/test_conf_file.py
+#
+# The suite uses only the standard library's unittest — no pytest, no fixtures
+# package, nothing to install. It needs PySide6 (a few core classes are
+# QObjects) but no display: everything runs on Qt's offscreen platform. It
+# finds PySide6 the same way ./clamguard does, including a .venv in this folder.
+#
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$HERE"
+
+export QT_QPA_PLATFORM=offscreen
+export PYTHONPATH="$HERE/src${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONDONTWRITEBYTECODE=1
+
+PYTHON="${CLAMGUARD_PYTHON:-}"
+if [[ -z "$PYTHON" ]]; then
+    for candidate in "$HERE/.venv/bin/python3" /usr/bin/python3 "$(command -v python3 || true)"; do
+        if [[ -x "$candidate" ]] &&
+           "$candidate" -c 'import PySide6.QtWidgets, PySide6.QtSvg, PySide6.QtNetwork' 2>/dev/null; then
+            PYTHON="$candidate"
+            break
+        fi
+    done
+fi
+
+if [[ -z "$PYTHON" ]]; then
+    echo "No Python with PySide6 was found. See ./clamguard for how to install it." >&2
+    exit 1
+fi
+
+VERBOSE=()
+TARGETS=()
+for argument in "$@"; do
+    case "$argument" in
+        -v|--verbose) VERBOSE=(-v) ;;
+        *)            TARGETS+=("tests.test_${argument#test_}") ;;
+    esac
+done
+
+if [[ ${#TARGETS[@]} -eq 0 ]]; then
+    exec "$PYTHON" -m unittest discover -s tests -t . "${VERBOSE[@]}"
+fi
+exec "$PYTHON" -m unittest "${VERBOSE[@]}" "${TARGETS[@]}"

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#
+# ClamGuard launcher.
+#
+# Finds a Python that actually has PySide6. This matters more than it should:
+# a conda or pyenv Python early on PATH usually does not have the distribution's
+# PySide6 package, so `python3 -m clamguard` fails with ModuleNotFoundError
+# while the system Python would have worked fine.
+#
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH="$HERE/src${PYTHONPATH:+:$PYTHONPATH}"
+
+# Every Qt module the app imports. Debian and Ubuntu package them separately,
+# and a Python with QtWidgets but not QtNetwork would otherwise pass this check
+# and then die at startup with a traceback instead of the advice below.
+has_pyside() {
+    "$1" -c 'import PySide6.QtWidgets, PySide6.QtSvg, PySide6.QtNetwork' >/dev/null 2>&1
+}
+
+CANDIDATES=(
+    "${CLAMGUARD_PYTHON:-}"
+    "$HERE/.venv/bin/python3"
+    /usr/bin/python3
+    "$(command -v python3 2>/dev/null || true)"
+    /usr/local/bin/python3
+    /usr/bin/python
+)
+
+if [[ -n "${CLAMGUARD_PYTHON:-}" ]] && ! has_pyside "${CLAMGUARD_PYTHON}"; then
+    echo "clamguard: ${CLAMGUARD_PYTHON} has no PySide6; looking for another Python." >&2
+fi
+
+for candidate in "${CANDIDATES[@]}"; do
+    [[ -n "$candidate" && -x "$candidate" ]] || continue
+    if has_pyside "$candidate"; then
+        exec "$candidate" -m clamguard "$@"
+    fi
+done
+
+cat >&2 <<MESSAGE
+ClamGuard needs PySide6 6.8 or newer (the Qt 6 bindings for Python), including
+its QtWidgets, QtSvg and QtNetwork modules, and could not find a Python
+interpreter that has them.
+
+Install it with one of:
+
+    Arch, Manjaro           sudo pacman -S pyside6
+    Fedora                  sudo dnf install python3-pyside6
+    Debian 13+, Ubuntu 25.10+
+                            sudo apt install python3-pyside6.qtwidgets \\
+                                python3-pyside6.qtsvg python3-pyside6.qtnetwork
+
+Anywhere else, including Ubuntu 24.04, which does not package PySide6: a
+virtual environment in this folder, which ClamGuard then finds by itself.
+
+    python3 -m venv "$HERE/.venv"
+    "$HERE/.venv/bin/pip" install PySide6-Essentials
+
+(Debian and Ubuntu need 'sudo apt install python3-venv' for the first line.)
+
+If PySide6 is installed for some other interpreter, point ClamGuard at it:
+
+    CLAMGUARD_PYTHON=/path/to/python3 $0
+MESSAGE
+exit 1

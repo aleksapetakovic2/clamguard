@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<!--
+  Declares the one privileged action ClamGuard can ask for.
+
+  Without this file pkexec still works, but it shows a generic "authenticate to
+  run /usr/local/lib/clamguard/clamguard-helper" dialog. With it, the user sees
+  a description of what is actually about to happen.
+
+  allow_active is auth_admin_keep so that a single task made of two privileged
+  steps — write the config, then restart the daemon — asks for the password
+  once rather than twice. Change it to auth_admin if you would rather be asked
+  every single time.
+-->
+<policyconfig>
+  <vendor>ClamGuard</vendor>
+
+  <action id="org.clamguard.helper.run">
+    <description>Manage ClamAV configuration and services</description>
+    <description xml:lang="en_GB">Manage ClamAV configuration and services</description>
+    <message>Authentication is required to change ClamAV settings, control its services, or update its virus signatures.</message>
+    <icon_name>security-high</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/lib/clamguard/clamguard-helper</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+</policyconfig>
