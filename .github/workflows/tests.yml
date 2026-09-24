@@ -49,4 +49,31 @@ jobs:
       - name: Run the tests
         env:
           CLAMGUARD_PYTHON: ${{ steps.python.outputs.python-path }}
-        run: ./run-tests
+        run: |
+          set -o pipefail
+          ./run-tests 2>&1 | tee test-output.txt
+
+      # Each failure becomes an annotation on the run's page. Unlike the log,
+      # annotations can be read without signing in to GitHub.
+      - name: Annotate failures
+        if: failure()
+        run: |
+          python - <<'SCRIPT'
+          import pathlib
+
+          def escape(text, is_property=False):
+              text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              return text.replace(":", "%3A").replace(",", "%2C") if is_property else text
+
+          output = pathlib.Path("test-output.txt")
+          text = output.read_text(errors="replace") if output.exists() else ""
+          blocks = text.split("\n" + "=" * 70 + "\n")[1:]
+          if blocks:
+              blocks[-1] = blocks[-1].split("\n" + "-" * 70 + "\nRan ")[0]
+          for block in blocks[:10]:
+              title, _, body = block.partition("\n")
+              body = body.split("-" * 70 + "\n", 1)[-1].strip()
+              print(f"::error title={escape(title[:200], True)}::{escape(body[-3000:])}")
+          if not blocks:
+              print("::error::The tests did not run to completion; see the log.")
+          SCRIPT

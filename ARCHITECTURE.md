@@ -242,7 +242,8 @@ does everything after that through the directory's descriptor — open, write,
 `fchown`, rename, unlink. A symlink that was there all along (Silverblue's
 `/home`) is resolved first and keeps working; one swapped in mid-operation makes
 the walk fail. The quarantined file is only unlinked if its name still refers
-to the inode that was read. `tests/test_security.py::TestHelperRaces` stages
+to the file that was read: same inode, size and timestamps — the inode number
+alone is not proof, because ext4 hands a freed one straight to the next file. `tests/test_security.py::TestHelperRaces` stages
 each of these swaps against the real helper code.
 
 **The GUI never calls a privileged verb without a confirmation dialog that shows

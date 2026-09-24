@@ -349,6 +349,19 @@ class TestHelperRaces(unittest.TestCase):
         self.assertFalse(payload.exists(), "an aborted quarantine leaves no payload")
         self.assertEqual(list(self.helper["RECORD_DIR"].iterdir()), [])
 
+    def test_a_reused_inode_number_is_not_mistaken_for_the_same_file(self) -> None:
+        """ext4 gives a freed inode to the next file created, which is how the
+        test above first passed on tmpfs and failed on GitHub's runner."""
+        from types import SimpleNamespace
+
+        identity = self.helper["_identity"]
+        read = SimpleNamespace(st_dev=1, st_ino=42, st_size=24,
+                               st_mtime_ns=1_000, st_ctime_ns=1_000)
+        for change in ({"st_size": 15}, {"st_ctime_ns": 2_000}, {"st_mtime_ns": 2_000}):
+            stand_in = SimpleNamespace(**{**vars(read), **change})
+            self.assertNotEqual(identity(stand_in), identity(read), change)
+        self.assertEqual(identity(SimpleNamespace(**vars(read))), identity(read))
+
     def test_the_source_of_a_quarantine_is_never_a_symlink(self) -> None:
         (self.victim / "target").write_bytes(self.EICAR_ISH)
         (self.work / "link").symlink_to(self.victim / "target")

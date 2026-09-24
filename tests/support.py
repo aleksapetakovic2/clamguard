@@ -67,7 +67,24 @@ def qt_application():
             from PySide6.QtCore import QCoreApplication as Application
 
         _application = Application.instance() or Application(sys.argv[:1])
+        _quieten_offscreen_platform()
     return _application
+
+
+#: Printed by the offscreen platform in PyPI's Qt every time a window's size
+#: limits change — hundreds of times a run, drowning the actual results. It
+#: means only that there is no real window system to tell.
+_OFFSCREEN_NOISE = "This plugin does not support propagateSizeHints()"
+
+
+def _quieten_offscreen_platform() -> None:
+    from PySide6.QtCore import qInstallMessageHandler
+
+    def handler(_mode, _context, message: str) -> None:
+        if message != _OFFSCREEN_NOISE:
+            print(message, file=sys.stderr)
+
+    qInstallMessageHandler(handler)
 
 
 class TempHomeTestCase(unittest.TestCase):

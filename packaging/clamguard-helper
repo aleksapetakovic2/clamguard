@@ -267,6 +267,11 @@ def open_file(directory: int, name: str, shown_as: Path,
     return descriptor, info
 
 
+def _identity(info: os.stat_result) -> tuple:
+    """What has to match for a path to still be the file that was read."""
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
 def read_from(descriptor: int, size: int, offset: int = 0) -> bytes:
     """Read size bytes from offset, however many reads that takes."""
     chunks = []
@@ -596,9 +601,14 @@ def verb_quarantine(args: list[str]) -> None:
         }
         write_record(record)
 
+        # The inode number alone is not enough: ext4 hands a freed inode
+        # straight to the next file created, so a replacement can reuse it.
+        # Size and change time as well make a stand-in far harder to pass
+        # off. (Whatever could be swapped in here, the caller could create —
+        # and so delete — in this directory themselves.)
         try:
             now = os.stat(source.name, dir_fd=folder_fd, follow_symlinks=False)
-            if (now.st_dev, now.st_ino) != (info.st_dev, info.st_ino):
+            if _identity(now) != _identity(info):
                 raise OSError(errno.ESTALE, "it was replaced while being quarantined")
             os.unlink(source.name, dir_fd=folder_fd)
         except OSError as error:

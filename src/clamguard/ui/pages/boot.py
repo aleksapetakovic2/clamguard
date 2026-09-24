@@ -241,13 +241,22 @@ class BootPage(Page):
         self.search.textChanged.connect(self._apply_filters)
         filter_row.addWidget(self.search, 1)
 
+        # The pickers and toggles share one holder, so that when the whole bar
+        # is too wide for the page they drop below the search box together
+        # rather than each on a line of its own.
+        controls = QWidget()
+        control_row = QHBoxLayout(controls)
+        control_row.setContentsMargins(0, 0, 0, 0)
+        control_row.setSpacing(SPACE_SM)
+        filter_row.addWidget(controls, 0)
+
         self.category_picker = QComboBox()
         self.category_picker.addItem("Every area", None)
         for category in CATEGORY_ORDER:
             self.category_picker.addItem(category.title, category)
         self.category_picker.currentIndexChanged.connect(self._on_category_changed)
         _let_shrink(self.category_picker)
-        filter_row.addWidget(self.category_picker, 0)
+        control_row.addWidget(self.category_picker, 0)
 
         self.sort_picker = QComboBox()
         self.sort_picker.addItem("Worst first", "severity")
@@ -255,7 +264,7 @@ class BootPage(Page):
         self.sort_picker.addItem("By check", "check")
         self.sort_picker.currentIndexChanged.connect(self._apply_filters)
         _let_shrink(self.sort_picker)
-        filter_row.addWidget(self.sort_picker, 0)
+        control_row.addWidget(self.sort_picker, 0)
 
         self.show_passes = QPushButton("Show passed")
         self.show_passes.setCheckable(True)
@@ -264,15 +273,17 @@ class BootPage(Page):
             "Checks that ran and found nothing wrong. Worth seeing once: "
             "“we looked and it is fine” is not the same as “we did not look”.")
         self.show_passes.clicked.connect(self._on_show_passes)
-        filter_row.addWidget(self.show_passes, 0)
+        control_row.addWidget(self.show_passes, 0)
 
         self.show_muted = QPushButton("Show muted")
         self.show_muted.setCheckable(True)
         self.show_muted.clicked.connect(self._apply_filters)
-        filter_row.addWidget(self.show_muted, 0)
+        control_row.addWidget(self.show_muted, 0)
         column.addWidget(filters)
+        # Inset: the bar's own padding, and the tab widget's frame around it.
+        self.make_responsive(filter_row, inset=2 * SPACE_MD + 6)
 
-        self.result_count = label("", role="muted")
+        self.result_count = label("", role="muted", wrap=True)
         column.addWidget(self.result_count)
 
         self.findings_holder = QWidget()

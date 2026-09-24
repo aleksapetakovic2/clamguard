@@ -48,6 +48,7 @@ from ..widgets import (
     KeyValueRow,
     Separator,
     ToggleSwitch,
+    flow_row,
     label,
 )
 from .base import Page
@@ -540,8 +541,6 @@ class SettingsPage(Page):
         self.data_box.setSpacing(0)
         card.body.addLayout(self.data_box)
 
-        buttons = QHBoxLayout()
-        buttons.setSpacing(SPACE_SM)
         purge = QPushButton("Delete scans older than 90 days")
         purge.clicked.connect(self._purge_history)
         open_folder = QPushButton("Open the data folder")
@@ -550,11 +549,10 @@ class SettingsPage(Page):
         reset = QPushButton("Reset all preferences")
         reset.setProperty("variant", "danger")
         reset.clicked.connect(self._reset_settings)
-        buttons.addWidget(purge)
-        buttons.addWidget(open_folder)
-        buttons.addStretch(1)
-        buttons.addWidget(reset)
-        card.body.addLayout(buttons)
+        # Wrapping, not a fixed row: side by side the three are wider than the
+        # card at the window's minimum size once the font is DejaVu Sans, the
+        # default on Debian and Ubuntu.
+        card.body.addWidget(flow_row(purge, open_folder, reset, spacing=SPACE_SM))
         self.data_card = card
         return card
 

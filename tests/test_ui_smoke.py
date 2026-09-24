@@ -19,6 +19,51 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from .support import TempHomeTestCase, recent_stamps  # noqa: E402
 
 
+def _why_so_wide(widget) -> str:
+    """Where a widget's minimum width comes from, for a failure message.
+
+    Follows the widest item down through vertical layouts and tab widgets, and
+    stops at the first row, which it lists in full: a minimum width is either
+    one wide thing or several things side by side. Written because the fit
+    test first failed on a CI runner whose fonts and findings differ from any
+    machine it can be debugged on.
+    """
+    from PySide6.QtGui import QFontInfo
+    from PySide6.QtWidgets import QBoxLayout, QLayout, QTabWidget
+
+    def name(item) -> str:
+        if item is None:
+            return "spacer"
+        text = item.text() if callable(getattr(item, "text", None)) else ""
+        return type(item).__name__ + (f" {text[:40]!r}" if text else "")
+
+    steps = [f"font {QFontInfo(widget.font()).family()!r}"]
+    node = widget
+    for _ in range(25):
+        if isinstance(node, QTabWidget):
+            node = max((node.widget(i) for i in range(node.count())),
+                       key=lambda page: page.minimumSizeHint().width())
+            steps.append(f"widest tab {node.minimumSizeHint().width()}px")
+            continue
+        if not isinstance(node, QLayout):
+            steps.append(f"{name(node)} {node.minimumSizeHint().width()}px")
+        layout = node if isinstance(node, QLayout) else node.layout()
+        if layout is None:
+            break
+        items = [layout.itemAt(i) for i in range(layout.count())]
+        if isinstance(layout, QBoxLayout) and layout.direction() in (
+                QBoxLayout.Direction.LeftToRight, QBoxLayout.Direction.RightToLeft):
+            steps.append("a row of " + ", ".join(
+                f"{name(item.widget() or item.layout())} {item.minimumSize().width()}px"
+                for item in items if not item.isEmpty()))
+            break
+        widest = max(items, key=lambda item: item.minimumSize().width(), default=None)
+        node = widest and (widest.widget() or widest.layout())
+        if node is None:
+            break
+    return " → ".join(steps)
+
+
 def _widgets_available() -> bool:
     try:
         from PySide6.QtWidgets import QApplication  # noqa: F401
@@ -186,7 +231,8 @@ class TestWindow(TempHomeTestCase):
                     time.sleep(0.02)
 
                 self.assertLessEqual(page.minimumSizeHint().width(), page.width(),
-                                     "the page is wider than the window allows")
+                                     "the page is wider than the window allows: "
+                                     + _why_so_wide(page))
                 for area in page.findChildren(QScrollArea):
                     content = area.widget()
                     if (content is None or not area.isVisible()
@@ -195,7 +241,8 @@ class TestWindow(TempHomeTestCase):
                         continue
                     self.assertLessEqual(
                         content.minimumSizeHint().width(), area.viewport().width(),
-                        f"content inside a {type(area).__name__} is clipped")
+                        f"content inside a {type(area).__name__} is clipped: "
+                        + _why_so_wide(content))
 
     def test_pages_survive_being_visited_twice(self) -> None:
         """on_shown() rebuilds panels, so a second visit must not double up."""
