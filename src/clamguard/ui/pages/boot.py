@@ -198,10 +198,11 @@ class BootPage(Page):
             "25, a high 12, a medium 5, a low 2. Muted findings cost nothing.")
         texts.addWidget(self.working)
 
-        self.chips_holder = QWidget()
-        self.chips = QHBoxLayout(self.chips_holder)
-        self.chips.setContentsMargins(0, 0, 0, 0)
-        self.chips.setSpacing(SPACE_SM)
+        # Wrapping, like the facts below: one chip per severity present, and a
+        # machine with findings at every level made the row alone wider than
+        # the page at the window's smallest size.
+        self.chips_holder = flow_row(spacing=SPACE_SM)
+        self.chips = self.chips_holder.layout()
         texts.addWidget(self.chips_holder)
 
         # A flow rather than a row: seven facts side by side were a 650px
@@ -448,7 +449,6 @@ class BootPage(Page):
         if muted:
             note = label(f"· {muted} muted", role="caption")
             self.chips.addWidget(note)
-        self.chips.addStretch(1)
 
     def _build_facts(self, report: Report) -> None:
         _discard(self.facts)

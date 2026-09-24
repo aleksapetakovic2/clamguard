@@ -38,7 +38,10 @@ def restyle(widget: QWidget) -> None:
     style = widget.style()
     style.unpolish(widget)
     style.polish(widget)
-    widget.update()
+    # QWidget's, named explicitly: an item view's own update() takes an index,
+    # and PySide6 6.8 offers only that one, so widget.update() on a table
+    # raised TypeError there.
+    QWidget.update(widget)
 
 
 def label(text: str = "", *, role: str = "body", tone: str = "",

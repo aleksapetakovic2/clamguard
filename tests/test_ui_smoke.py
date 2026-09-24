@@ -244,6 +244,42 @@ class TestWindow(TempHomeTestCase):
                         f"content inside a {type(area).__name__} is clipped: "
                         + _why_so_wide(content))
 
+    def test_the_boot_score_card_fits_with_every_severity_present(self) -> None:
+        """The fit test above sees only what this machine's analysis finds.
+
+        GitHub's runner found something at every severity, and one chip per
+        severity in a row that could not wrap made the Boot Analyzer 51px
+        wider than the page at the window's smallest size. This staged the
+        worst case, so it no longer depends on the machine.
+        """
+        import time
+
+        from PySide6.QtWidgets import QScrollArea
+
+        class EverySeverity:
+            def count(self, _level) -> int:
+                return 12
+
+            def muted(self) -> list:
+                return [object()] * 3
+
+        self.window.resize(*self.window.minimumSize().toTuple())
+        self.window.show_page("boot")
+        page = self.window.current_page()
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline and page.analyzer.busy:
+            self.app.processEvents()
+            time.sleep(0.05)
+        page._build_chips(EverySeverity())
+        for _ in range(12):
+            self.app.processEvents()
+            time.sleep(0.02)
+        for area in page.findChildren(QScrollArea):
+            if area.widget() is not None and area.isVisible():
+                self.assertLessEqual(area.widget().minimumSizeHint().width(),
+                                     area.viewport().width(),
+                                     _why_so_wide(area.widget()))
+
     def test_pages_survive_being_visited_twice(self) -> None:
         """on_shown() rebuilds panels, so a second visit must not double up."""
         for _ in range(2):
